@@ -38,13 +38,13 @@
     }
     .progress-bar {
       height: 100%;
-      border-radius: 0.375rem; /* rounded-md */
+      border-radius: 0.375rem;
       transition: width 0.5s ease-in-out;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem; /* text-xs */
-      font-weight: 600; /* font-semibold */
+      font-size: 0.75rem;
+      font-weight: 600;
       color: white;
     }
     .health-bar {
@@ -52,6 +52,9 @@
     }
     .budget-bar {
       background-color: #3b82f6; /* blue-500 */
+    }
+    .satisfaction-bar {
+      background-color: #6ee7b7; /* emerald-300 */
     }
     /* Ensure buttons have consistent height */
     .choice-button {
@@ -79,7 +82,7 @@
       max-width: 500px;
       width: 100%;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                  0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
   </style>
 </head>
@@ -95,14 +98,15 @@
         The goal is education and awareness, presented with sensitivity and respect.
       </p>
       <p class="text-sm font-semibold">
-        Objective: Manage the building's health and finances to continue operations for as many years as possible (up to Year 49).
-        The simulation ends if Building Health or Reserve Fund drops below critical levels. Your score is the final year reached.
+        Objective: Manage the building's health, finances, and resident satisfaction to continue operations for as many years as possible (up to Year 49).
+        The simulation ends if Building Health, Reserve Fund, or Resident Satisfaction drops below critical levels.
+        Your score is the final year reached.
       </p>
       <button id="start-button" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-150">Start Challenge</button>
     </div>
     
     <div id="simulation-area" class="hidden">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
           <label for="health-bar" class="block text-sm font-medium text-gray-700 mb-1">Building Health</label>
           <div class="progress-bar-container">
@@ -113,6 +117,12 @@
           <label for="budget-bar" class="block text-sm font-medium text-gray-700 mb-1">Reserve Fund</label>
           <div class="progress-bar-container">
             <div id="budget-bar" class="progress-bar budget-bar" style="width: 80%;">80%</div>
+          </div>
+        </div>
+        <div>
+          <label for="satisfaction-bar" class="block text-sm font-medium text-gray-700 mb-1">Resident Satisfaction</label>
+          <div class="progress-bar-container">
+            <div id="satisfaction-bar" class="progress-bar satisfaction-bar" style="width: 100%;">100%</div>
           </div>
         </div>
       </div>
@@ -149,8 +159,10 @@
     let currentEventIndex = 0;
     let buildingHealth = 100;
     let reserveFund = 80;
+    let residentSatisfaction = 100;
     let currentYear = 1;
     const CRITICAL_HEALTH_THRESHOLD = 15;
+    const CRITICAL_SATISFACTION_THRESHOLD = 20;
 
     // --- DOM Elements ---
     const introductionDiv = document.getElementById('introduction');
@@ -158,6 +170,7 @@
     const simulationArea = document.getElementById('simulation-area');
     const healthBar = document.getElementById('health-bar');
     const budgetBar = document.getElementById('budget-bar');
+    const satisfactionBar = document.getElementById('satisfaction-bar');
     const yearCounter = document.getElementById('year-counter');
     const eventDescription = document.getElementById('event-description');
     const choicesArea = document.getElementById('choices-area');
@@ -171,128 +184,128 @@
 
     // --- Simulation Data (Extended) ---
     const events = [
-      // --- Initial Phase (Years 1-13) ---
+      // --- Initial Phase (Years 1-21, Pre-25; easier costs) ---
       { year: 1, description: "Initial assessment notes minor garage spalling. Cost: 5% funds.", choices: [
-          { text: "Patch now.", healthChange: 0, fundChange: -5, feedback: "Minor patching done." },
-          { text: "Monitor, defer.", healthChange: -2, fundChange: 0, feedback: "Patching deferred." }
+          { text: "Patch now.", healthChange: 0, fundChange: -5, bonus: 2, satisfactionChange: 3, feedback: "Minor patching done. Residents appreciate the prompt repair." },
+          { text: "Monitor, defer.", healthChange: -2, fundChange: 0, satisfactionChange: -2, feedback: "Patching deferred." }
         ] 
       },
-      { year: 3, description: "Detailed report: Widespread deterioration. Major repairs (60% funds) needed within 2 years.", choices: [
-          { text: "Approve full repairs.", healthChange: 15, fundChange: -60, feedback: "Major repairs approved. Health up, funds down." },
-          { text: "Phase repairs (30% now).", healthChange: 5, fundChange: -30, feedback: "Phased repairs begin. Issues may worsen." },
-          { text: "Delay, seek lower bids.", healthChange: -10, fundChange: 0, feedback: "Repairs delayed. Deterioration accelerates." }
+      { year: 3, description: "Detailed report: Widespread deterioration. Major repairs needed within 2 years.", choices: [
+          { text: "Approve full repairs.", healthChange: 15, fundChange: -30, bonus: 5, satisfactionChange: 5, feedback: "Major repairs approved. Health up, funds down. Residents are relieved." },
+          { text: "Phase repairs (30% now).", healthChange: 5, fundChange: -15, bonus: 2, satisfactionChange: 2, feedback: "Phased repairs begin. Residents are cautiously optimistic." },
+          { text: "Delay, seek lower bids.", healthChange: -10, fundChange: 0, satisfactionChange: -5, feedback: "Repairs delayed. Deterioration accelerates." }
         ] 
       },
       { year: 5, description: "Residents concerned about high assessment for major repairs.", choices: [
-          { text: "Proceed with assessment.", healthChange: 0, fundChange: 0, feedback: "Assessment proceeds. Relations strained." },
-          { text: "Reduce repair scope.", healthChange: -8, fundChange: 0, feedback: "Scope reduced. Critical issues may remain." },
-          { text: "Delay assessment further.", healthChange: -5, fundChange: -5, feedback: "Assessment delayed. Health declines." }
+          { text: "Proceed with assessment.", healthChange: 0, fundChange: 0, satisfactionChange: -2, feedback: "Assessment proceeds. Relations strained." },
+          { text: "Reduce repair scope.", healthChange: -8, fundChange: -8, satisfactionChange: -3, feedback: "Scope reduced. Critical issues may remain." },
+          { text: "Delay assessment further.", healthChange: -5, fundChange: -5, satisfactionChange: -2, feedback: "Assessment delayed. Health declines." }
         ] 
       },
       { year: 7, description: "Repair bids are 20% higher than estimate.", choices: [
-          { text: "Accept higher bids.", healthChange: 10, fundChange: -70, feedback: "Higher costs accepted. Repairs funded." },
-          { text: "Reduce scope to meet budget.", healthChange: -15, fundChange: -50, feedback: "Scope reduced significantly. Health drops." },
-          { text: "Postpone again.", healthChange: -12, fundChange: 0, feedback: "Repairs postponed again. Deterioration worsens." }
+          { text: "Accept higher bids.", healthChange: 10, fundChange: -40, bonus: 3, satisfactionChange: 4, feedback: "Higher costs accepted. Repairs funded. Residents are pleased with the commitment to safety." },
+          { text: "Reduce scope to meet budget.", healthChange: -15, fundChange: -25, satisfactionChange: -4, feedback: "Scope reduced significantly. Health drops." },
+          { text: "Postpone again.", healthChange: -10, fundChange: 0, satisfactionChange: -3, feedback: "Repairs postponed again. Deterioration worsens." }
         ] 
       },
       { year: 9, description: "Increased leaks & cracks reported. Engineers urge immediate action.", choices: [
-          { text: "Emergency shoring & full repairs.", healthChange: 5, fundChange: -80, feedback: "Emergency measures taken. Extremely costly." },
-          { text: "Commission another study.", healthChange: -18, fundChange: -5, feedback: "Another study. Critical time lost." },
-          { text: "Localized patching only.", healthChange: -15, fundChange: -10, feedback: "Superficial patching. Issues worsen rapidly." }
+          { text: "Emergency shoring & full repairs.", healthChange: 5, fundChange: -40, bonus: 5, satisfactionChange: 5, feedback: "Emergency measures taken. Costly but residents feel secure." },
+          { text: "Commission another study.", healthChange: -18, fundChange: -5, satisfactionChange: -2, feedback: "Another study. Critical time lost." },
+          { text: "Localized patching only.", healthChange: -15, fundChange: -10, satisfactionChange: -4, feedback: "Superficial patching. Issues worsen rapidly." }
         ] 
       },
-      { year: 11, description: "Follow-up inspection. Status depends on past actions (A: Minor new issues / B: Significant worsening).", choices: [
-          { text: "Address new minor issues.", healthChange: 2, fundChange: -10, feedback: "Proactive on minor issues." },
-          { text: "Certify past work, defer new.", healthChange: -3, fundChange: 0, feedback: "New minor issues deferred." },
-          { text: "Address major worsening (if needed).", healthChange: 8, fundChange: -50, feedback: "Costly catch-up on major issues." }
+      { year: 11, description: "Follow-up inspection. Status depends on past actions.", choices: [
+          { text: "Address new minor issues.", healthChange: 2, fundChange: -10, bonus: 2, satisfactionChange: 3, feedback: "Proactive on minor issues. Residents appreciate the upkeep." },
+          { text: "Certify past work, defer new.", healthChange: -3, fundChange: 0, satisfactionChange: -2, feedback: "Minor issues deferred." },
+          { text: "Address major worsening.", healthChange: 8, fundChange: -25, satisfactionChange: 0, feedback: "Costly catch-up on major issues." }
         ] 
       },
       { year: 13, description: "Main roof needs full replacement (40% funds).", choices: [
-          { text: "Replace roof fully.", healthChange: 1, fundChange: -40, feedback: "Roof replaced. Prevents future leaks." },
-          { text: "Patch roof, delay 2 years.", healthChange: -4, fundChange: -5, feedback: "Roof patched. Risk of leaks increases." },
-          { text: "Use lower quality materials.", healthChange: 0, fundChange: -30, feedback: "Cheaper roof. May fail sooner." }
+          { text: "Replace roof fully.", healthChange: 1, fundChange: -30, bonus: 3, satisfactionChange: 4, feedback: "Roof replaced. Prevents future leaks. Residents are happy with the improved safety." },
+          { text: "Patch roof, delay 2 years.", healthChange: -4, fundChange: -5, satisfactionChange: -3, feedback: "Roof patched. Risk of leaks increases." },
+          { text: "Use lower quality materials.", healthChange: 0, fundChange: -20, satisfactionChange: -4, feedback: "Cheaper roof. May fail sooner." }
         ] 
       },
-      // --- Mid-Life Phase (Years 15-35) ---
       { year: 15, description: "Routine Facade Inspection: Some caulking failed, minor water intrusion signs (Cost 8%).", choices: [
-          { text: "Recaulk affected areas.", healthChange: 1, fundChange: -8, feedback: "Facade resealed. Minor cost." },
-          { text: "Monitor, defer caulking.", healthChange: -3, fundChange: 0, feedback: "Deferred caulking allows minor water intrusion." }
+          { text: "Recaulk affected areas.", healthChange: 1, fundChange: -8, bonus: 2, satisfactionChange: 3, feedback: "Facade resealed. Residents are pleased." },
+          { text: "Monitor, defer caulking.", healthChange: -3, fundChange: 0, satisfactionChange: -2, feedback: "Deferred caulking allows minor water intrusion." }
         ] 
       },
-      { year: 18, description: "Central HVAC system is aging (20 years old). Efficiency dropping. Full replacement cost: 50%. Major repairs: 20%.", choices: [
-          { text: "Full HVAC replacement.", healthChange: 2, fundChange: -50, feedback: "New HVAC. Efficient but costly." },
-          { text: "Major repairs only.", healthChange: 0, fundChange: -20, feedback: "Repairs done. Less efficient, may need more soon." },
-          { text: "Minimal maintenance, run till failure.", healthChange: -5, fundChange: -2, feedback: "HVAC limps along. Efficiency poor, health slightly down." }
+      { year: 18, description: "Central HVAC system is aging (20 years old). Full replacement cost: 50%.", choices: [
+          { text: "Full HVAC replacement.", healthChange: 2, fundChange: -30, bonus: 4, satisfactionChange: 4, feedback: "New HVAC installed. Costly but residents are comforted by the upgrade." },
+          { text: "Major repairs only.", healthChange: 0, fundChange: -20, satisfactionChange: -1, feedback: "Repairs done. Less efficient." },
+          { text: "Minimal maintenance, run till failure.", healthChange: -5, fundChange: -2, satisfactionChange: -3, feedback: "HVAC limps along. Efficiency poor." }
         ] 
       },
-      { year: 21, description: "Severe storm causes moderate window and balcony damage not fully covered by insurance. Net cost: 15%.", choices: [
-          { text: "Repair all damage properly.", healthChange: 3, fundChange: -15, feedback: "Storm damage repaired." },
-          { text: "Patch cheapest way possible.", healthChange: -2, fundChange: -8, feedback: "Cheap patches may lead to leaks." },
-          { text: "Delay repairs, seek special assessment.", healthChange: -5, fundChange: 0, feedback: "Repairs delayed. Further damage possible." }
+      { year: 21, description: "Severe storm causes moderate window and balcony damage. Net cost: 15%.", choices: [
+          { text: "Repair all damage properly.", healthChange: 3, fundChange: -15, bonus: 3, satisfactionChange: 4, feedback: "Storm damage repaired. Residents are happy with the full repair." },
+          { text: "Patch cheapest way possible.", healthChange: -2, fundChange: -8, satisfactionChange: -3, feedback: "Cheap patches may lead to leaks." },
+          { text: "Delay repairs, seek special assessment.", healthChange: -5, fundChange: 0, satisfactionChange: -2, feedback: "Repairs delayed. Further damage possible." }
         ] 
       },
-      { year: 25, description: "Major 25-Year Structural Review. Findings depend heavily on past actions. If major issues were deferred, significant new recommendations (Cost up to 70%) are likely.", choices: [
-          { text: "Fund all new recommendations.", healthChange: 12, fundChange: -70, feedback: "All recommendations funded. Expensive but addresses potential major issues." },
-          { text: "Fund only critical items (40%).", healthChange: 4, fundChange: -40, feedback: "Only critical items funded. Some risks remain." },
-          { text: "Dispute findings, get second opinion (delay).", healthChange: -10, fundChange: -5, feedback: "Review disputed. Significant delay, health declines." }
+      { year: 25, description: "Major 25-Year Structural Review. New recommendations may cost up to 70%.", choices: [
+          { text: "Fund all new recommendations.", healthChange: 12, fundChange: -40, bonus: 5, satisfactionChange: 5, feedback: "All recommendations funded. Expensive but residents are relieved." },
+          { text: "Fund only critical items (40%).", healthChange: 4, fundChange: -20, satisfactionChange: 0, feedback: "Only critical items funded. Some risks remain." },
+          { text: "Dispute findings, get second opinion.", healthChange: -10, fundChange: -5, satisfactionChange: -3, feedback: "Review disputed. Delay and health declines." }
         ] 
       },
+      // --- Later Life Phase (Years 28-49; higher costs, more challenging) ---
       { year: 28, description: "Elevators require mandatory modernization for code compliance. Cost: 35%.", choices: [
-          { text: "Modernize elevators.", healthChange: 1, fundChange: -35, feedback: "Elevators modernized. Code compliant." },
-          { text: "Seek variance, delay 3 years.", healthChange: -2, fundChange: -3, feedback: "Variance sought. Delay adds risk, minor cost." }
+          { text: "Modernize elevators.", healthChange: 1, fundChange: -35, bonus: 3, satisfactionChange: 3, feedback: "Elevators modernized. Residents are satisfied." },
+          { text: "Seek variance, delay 3 years.", healthChange: -2, fundChange: -3, satisfactionChange: -2, feedback: "Variance sought. Delay adds risk." }
         ] 
       },
-      { year: 31, description: "Increasing reports of plumbing leaks in multiple units. Full repipe needed eventually. Repipe cost: 55%. Extensive patching: 15%.", choices: [
-          { text: "Full building repipe.", healthChange: 5, fundChange: -55, feedback: "Full repipe. Solves leaks but very costly." },
-          { text: "Extensive patching of known leaks.", healthChange: -5, fundChange: -15, feedback: "Patching done. Leaks likely continue elsewhere." },
-          { text: "Patch only emergency leaks.", healthChange: -9, fundChange: -5, feedback: "Minimal patching. Frequent leaks damage units." }
+      { year: 31, description: "Increasing reports of plumbing leaks. Full repipe needed eventually. Repipe cost: 55%.", choices: [
+          { text: "Full building repipe.", healthChange: 5, fundChange: -55, bonus: 4, satisfactionChange: 4, feedback: "Full repipe completed. Residents appreciate the fix." },
+          { text: "Extensive patching of known leaks.", healthChange: -5, fundChange: -15, satisfactionChange: -3, feedback: "Patching done. Leaks likely continue." },
+          { text: "Patch only emergency leaks.", healthChange: -9, fundChange: -5, satisfactionChange: -4, feedback: "Minimal patching. Frequent leaks damage units." }
         ] 
       },
-      { year: 34, description: "Reserve fund study shows insufficient funds for anticipated future repairs based on current trajectory.", choices: [
-          { text: "Increase resident fees by 15%.", healthChange: 0, fundChange: 20, feedback: "Fees increased. Improves fund health." },
-          { text: "Levy moderate special assessment (25%).", healthChange: 0, fundChange: 25, feedback: "Assessment levied. Boosts funds short-term." },
-          { text: "Maintain current funding, hope for the best.", healthChange: -3, fundChange: 0, feedback: "Funding issue ignored. Future repairs may be unfunded." }
+      { year: 34, description: "Reserve fund study shows insufficient funds for future repairs.", choices: [
+          { text: "Increase resident fees by 15%.", healthChange: 0, fundChange: 20, satisfactionChange: -1, feedback: "Fees increased. Fund health improves." },
+          { text: "Levy moderate special assessment (25%).", healthChange: 0, fundChange: 25, satisfactionChange: 0, feedback: "Assessment levied. Boosts funds short-term." },
+          { text: "Maintain current funding, hope for the best.", healthChange: -3, fundChange: 0, satisfactionChange: -2, feedback: "Funding issue ignored. Future repairs unfunded." }
         ] 
       },
-      // --- Later Life Phase (Years 37-49) ---
-      { year: 37, description: "Concrete testing reveals chloride levels approaching threshold in some areas not previously repaired. Proactive treatment cost: 30%.", choices: [
-          { text: "Apply proactive treatment.", healthChange: 6, fundChange: -30, feedback: "Proactive treatment applied. Slows corrosion." },
-          { text: "Monitor levels, delay treatment.", healthChange: -7, fundChange: 0, feedback: "Treatment delayed. Corrosion risk increases." }
+      { year: 37, description: "Concrete testing reveals chloride levels near threshold. Proactive treatment cost: 30%.", choices: [
+          { text: "Apply proactive treatment.", healthChange: 6, fundChange: -30, bonus: 3, satisfactionChange: 4, feedback: "Proactive treatment applied. Residents feel more confident." },
+          { text: "Monitor levels, delay treatment.", healthChange: -7, fundChange: 0, satisfactionChange: -3, feedback: "Treatment delayed. Corrosion risk increases." }
         ] 
       },
-      { year: 40, description: "Original windows (40 years old) showing widespread seal failure. Full replacement cost: 65%.", choices: [
-          { text: "Full window replacement.", healthChange: 2, fundChange: -65, feedback: "Windows replaced. Improves insulation, costly." },
-          { text: "Replace only worst 25% of windows.", healthChange: -2, fundChange: -20, feedback: "Partial replacement. Many leaky windows remain." },
-          { text: "Ignore issue, residents handle own windows.", healthChange: -6, fundChange: 0, feedback: "Window issues ignored. Drafts, leaks worsen." }
+      { year: 40, description: "Original windows (40 years old) show seal failure. Full replacement cost: 65%.", choices: [
+          { text: "Full window replacement.", healthChange: 2, fundChange: -65, bonus: 4, satisfactionChange: 4, feedback: "Windows replaced. Residents are pleased with the upgrade." },
+          { text: "Replace only worst 25% of windows.", healthChange: -2, fundChange: -20, satisfactionChange: -3, feedback: "Partial replacement. Many leaky windows remain." },
+          { text: "Ignore issue, residents handle own windows.", healthChange: -6, fundChange: 0, satisfactionChange: -4, feedback: "Windows ignored. Drafts and leaks worsen." }
         ] 
       },
       { year: 43, description: "Balcony railings show significant corrosion. Replacement needed for safety. Cost: 25%.", choices: [
-          { text: "Replace all railings.", healthChange: 4, fundChange: -25, feedback: "Railings replaced. Safety ensured." },
-          { text: "Patch and paint railings.", healthChange: -5, fundChange: -8, feedback: "Patching is temporary. Underlying corrosion remains." }
+          { text: "Replace all railings.", healthChange: 4, fundChange: -25, bonus: 3, satisfactionChange: 4, feedback: "Railings replaced. Safety ensured; residents applaud the upgrade." },
+          { text: "Patch and paint railings.", healthChange: -5, fundChange: -8, satisfactionChange: -3, feedback: "Patching is temporary. Underlying corrosion remains." }
         ] 
       },
-      { year: 46, description: "Major electrical system components (breakers, wiring risers) nearing end of life. Upgrade cost: 45%.", choices: [
-          { text: "Full electrical system upgrade.", healthChange: 3, fundChange: -45, feedback: "Electrical system upgraded. Improves safety." },
-          { text: "Replace only failing components as needed.", healthChange: -4, fundChange: -10, feedback: "Reactive replacements. Risk of larger failures." }
+      { year: 46, description: "Major electrical system components nearing end of life. Upgrade cost: 45%.", choices: [
+          { text: "Full electrical system upgrade.", healthChange: 3, fundChange: -45, bonus: 3, satisfactionChange: 3, feedback: "Electrical system upgraded. Residents feel secure." },
+          { text: "Replace only failing components.", healthChange: -4, fundChange: -10, satisfactionChange: -2, feedback: "Reactive replacements. Risk of larger failures." }
         ] 
       },
-      { year: 49, description: "50-Year building recertification process begins. Requires thorough inspection and addressing any outstanding major structural or life-safety issues.", choices: [
-          { text: "Fund all required recertification repairs (cost varies).", healthChange: 10, fundChange: -60, feedback: "Recertification repairs funded. Building viable for near future." },
-          { text: "Perform minimal repairs to barely pass.", healthChange: -10, fundChange: -30, feedback: "Minimal repairs done. Long-term issues likely remain." },
-          { text: "Challenge requirements, enter legal battle.", healthChange: -15, fundChange: -15, feedback: "Legal battle delays repairs. Significant risk and cost." }
+      { year: 49, description: "50-Year building recertification begins. Address all major structural or life-safety issues.", choices: [
+          { text: "Fund all required recertification repairs.", healthChange: 10, fundChange: -60, bonus: 5, satisfactionChange: 5, feedback: "Recertification repairs funded. Residents are very happy." },
+          { text: "Perform minimal repairs to barely pass.", healthChange: -10, fundChange: -30, satisfactionChange: -4, feedback: "Minimal repairs done. Long-term issues likely remain." },
+          { text: "Challenge requirements, enter legal battle.", healthChange: -15, fundChange: -15, satisfactionChange: -5, feedback: "Legal battle delays repairs. Significant risk and cost." }
         ] 
       }
     ];
 
     // --- Functions ---
 
-    // Update the health and reserve fund bars
+    // Update all status bars
     function updateStatusBars() {
       // Clamp values between 0 and 100
       buildingHealth = Math.max(0, Math.min(100, buildingHealth));
       reserveFund = Math.max(0, Math.min(100, reserveFund));
+      residentSatisfaction = Math.max(0, Math.min(100, residentSatisfaction));
 
-      // Update building health bar
+      // Update Building Health bar
       healthBar.style.width = `${buildingHealth}%`;
       healthBar.textContent = `${Math.round(buildingHealth)}%`;
       if (buildingHealth < CRITICAL_HEALTH_THRESHOLD) {
@@ -305,7 +318,7 @@
         healthBar.className = 'progress-bar health-bar bg-emerald-500';
       }
 
-      // Update reserve fund bar
+      // Update Reserve Fund bar
       budgetBar.style.width = `${reserveFund}%`;
       budgetBar.textContent = `${Math.round(reserveFund)}%`;
       if (reserveFund < 25) {
@@ -315,15 +328,25 @@
       } else {
         budgetBar.className = 'progress-bar budget-bar bg-blue-500';
       }
+
+      // Update Resident Satisfaction bar
+      satisfactionBar.style.width = `${residentSatisfaction}%`;
+      satisfactionBar.textContent = `${Math.round(residentSatisfaction)}%`;
+      if (residentSatisfaction < 30) {
+        satisfactionBar.className = 'progress-bar satisfaction-bar bg-red-500';
+      } else if (residentSatisfaction < 60) {
+        satisfactionBar.className = 'progress-bar satisfaction-bar bg-yellow-500';
+      } else {
+        satisfactionBar.className = 'progress-bar satisfaction-bar bg-green-500';
+      }
     }
 
-    // Display the current event and create choice buttons
+    // Display current event and create choice buttons
     function displayEvent(eventIndex) {
       if (eventIndex >= events.length) {
         endSimulation('completed');
         return;
       }
-
       const event = events[eventIndex];
       currentYear = event.year;
       yearCounter.textContent = `Year: ${currentYear}`;
@@ -334,8 +357,7 @@
       event.choices.forEach((choice) => {
         const button = document.createElement('button');
         button.textContent = choice.text;
-        button.className =
-          "choice-button bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out";
+        button.className = "choice-button bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out";
         button.onclick = () => handleChoice(choice);
         choicesArea.appendChild(button);
       });
@@ -345,15 +367,20 @@
       updateStatusBars();
     }
 
-    // Handle the player's choice and update the simulation state
+    // Handle player's choice and update simulation state
     function handleChoice(choice) {
       buildingHealth += choice.healthChange;
       reserveFund += choice.fundChange;
+      if (choice.hasOwnProperty('satisfactionChange')) {
+        residentSatisfaction += choice.satisfactionChange;
+      }
+      if (choice.bonus) {
+        reserveFund += choice.bonus;
+        choice.feedback += ` Bonus: +${choice.bonus}% funds from resident satisfaction.`;
+      }
       updateStatusBars();
 
       let feedbackText = choice.feedback;
-
-      // Append a warning if funds are critically low
       if (reserveFund < 10) {
         feedbackText += " Warning: Reserve funds are critically low!";
       }
@@ -364,71 +391,86 @@
       const buttons = choicesArea.querySelectorAll('button');
       buttons.forEach((button) => button.disabled = true);
 
-      // End simulation if building health or reserve funds are too low
-      if (buildingHealth < CRITICAL_HEALTH_THRESHOLD) {
-        setTimeout(() => endSimulation('low_health'), 1500);
+      // End simulation if any critical metric is too low
+      if (buildingHealth < CRITICAL_HEALTH_THRESHOLD || residentSatisfaction < CRITICAL_SATISFACTION_THRESHOLD) {
+        setTimeout(() => endSimulation('critical_failure'), 1500);
       } else if (reserveFund <= 0) {
         setTimeout(() => endSimulation('no_funds'), 1500);
-      } else if (currentEventIndex < events.length - 1) {
+      } else {
         nextButton.textContent = "Next Event";
         nextButton.onclick = nextEvent;
         nextButton.classList.remove('hidden');
-      } else {
-        nextButton.textContent = "Finish Challenge";
-        nextButton.onclick = () => endSimulation('completed');
-        nextButton.classList.remove('hidden');
       }
     }
 
-    // Move to the next event
+    // Trigger random event with 30% chance before the next planned event
     function nextEvent() {
-      currentEventIndex++;
-      displayEvent(currentEventIndex);
+      if (Math.random() < 0.3) {
+        triggerRandomEvent();
+      } else {
+        currentEventIndex++;
+        displayEvent(currentEventIndex);
+      }
     }
 
-    // End the simulation and display the summary modal
+    function triggerRandomEvent() {
+      const randomEvents = [
+        { description: "A local festival boosts resident morale! (+10% satisfaction, +5% funds)", healthChange: 0, fundChange: 5, satisfactionChange: 10 },
+        { description: "Unexpected maintenance grant! (+10% funds)", healthChange: 0, fundChange: 10, satisfactionChange: 0 },
+        { description: "Minor accident in the lobby reduces satisfaction. (-5% satisfaction)", healthChange: 0, fundChange: 0, satisfactionChange: -5 },
+        { description: "Sunny weather reduces strain on building systems. (+5% health, +5% satisfaction)", healthChange: 5, fundChange: 0, satisfactionChange: 5 }
+      ];
+      const randomEvent = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+      buildingHealth += randomEvent.healthChange;
+      reserveFund += randomEvent.fundChange;
+      residentSatisfaction += randomEvent.satisfactionChange;
+      updateStatusBars();
+      feedbackArea.textContent = "Random Event: " + randomEvent.description;
+      feedbackArea.classList.remove('hidden');
+      setTimeout(() => {
+        feedbackArea.classList.add('hidden');
+        currentEventIndex++;
+        displayEvent(currentEventIndex);
+      }, 2000);
+    }
+
+    // End simulation and display summary modal
     function endSimulation(reason) {
       simulationArea.classList.add('hidden');
       endScreenModal.classList.remove('hidden');
-
       let finalMessage = "";
       let titleClass = 'text-xl font-bold mb-4 text-center';
 
-      if (reason === 'low_health') {
+      if (reason === 'critical_failure') {
         endTitle.textContent = "Challenge Ended: Critical Failure";
-        finalMessage = `The simulation ended prematurely in Year ${currentYear} because Building Health fell below the critical threshold (${CRITICAL_HEALTH_THRESHOLD}%).\n\nThis highlights the severe consequences of accumulated risks and deferred maintenance.`;
+        finalMessage = `The simulation ended in Year ${currentYear} due to critical issues with Building Health or Resident Satisfaction.\n\nThis highlights the consequences of deferred maintenance and neglecting resident morale.`;
         titleClass += ' text-red-600';
       } else if (reason === 'no_funds') {
         endTitle.textContent = "Challenge Ended: Out of Funds";
-        finalMessage = `The simulation ended in Year ${currentYear} because your Reserve Fund was completely depleted.\n\nThis outcome underscores the need for balanced investments in both maintenance and finances.`;
+        finalMessage = `The simulation ended in Year ${currentYear} because your Reserve Fund was completely depleted.\n\nThis underscores the need for balanced investments.`;
         titleClass += ' text-red-600';
-      } else { // completed
+      } else {
         endTitle.textContent = "Challenge Completed to Year 49!";
-        finalMessage = `You successfully managed the building through Year ${currentYear}!\nFinal Building Health: ${Math.round(buildingHealth)}%.\nFinal Reserve Fund: ${Math.round(reserveFund)}%.\n\nReaching this stage required consistent and careful investment.`;
-        titleClass += (buildingHealth < 40) ? ' text-yellow-600' : ' text-green-600';
+        finalMessage = `You successfully managed the building through Year ${currentYear}!\nFinal Building Health: ${Math.round(buildingHealth)}%.\nFinal Reserve Fund: ${Math.round(reserveFund)}%.\nFinal Resident Satisfaction: ${Math.round(residentSatisfaction)}%.\n\nReaching this stage required careful investment—getting to Year 25 was easier, but advancing to Year 50 proved very challenging.`;
+        titleClass += (buildingHealth < 40 || residentSatisfaction < 40) ? ' text-yellow-600' : ' text-green-600';
       }
-
       endTitle.className = titleClass;
       endMessage.textContent = finalMessage;
       finalScore.textContent = `Final Score (Year Reached): ${currentYear}`;
     }
 
-    // Reset the simulation state and UI for a new game
+    // Reset simulation state and UI for a new game
     function restartSimulation() {
       currentEventIndex = 0;
       buildingHealth = 100;
       reserveFund = 80;
+      residentSatisfaction = 100;
       currentYear = 1;
-
       endScreenModal.classList.add('hidden');
       introductionDiv.classList.remove('hidden');
       simulationArea.classList.add('hidden');
-
-      // Reset the next button text and handler
       nextButton.textContent = "Next Event";
       nextButton.onclick = null;
-
-      // Reset health bar color
       healthBar.className = 'progress-bar health-bar bg-emerald-500';
     }
 
@@ -439,10 +481,10 @@
       currentEventIndex = 0;
       buildingHealth = 100;
       reserveFund = 80;
+      residentSatisfaction = 100;
       currentYear = 1;
       displayEvent(currentEventIndex);
     });
-
     restartButton.addEventListener('click', restartSimulation);
   </script>
 </body>
